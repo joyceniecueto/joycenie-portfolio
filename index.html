@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joycenie Cueto — Remote Bookkeeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F2EC;
+    --paper-dim:#EAE8DF;
+    --ink:#16241C;
+    --ink-soft:#4B564D;
+    --emerald:#1F6F4C;
+    --emerald-dark:#164F37;
+    --brass:#B98A2E;
+    --rule:#D9D4C2;
+    --white:#FFFFFF;
+    --debit:#1F6F4C;
+    --credit:#8B4A2B;
+    --radius:2px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;letter-spacing:-0.01em;}
+  a{color:inherit;text-decoration:none;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 32px;}
+  :focus-visible{outline:2px solid var(--emerald);outline-offset:3px;}
+
+  /* NAV */
+  header.nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(243,242,236,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--rule);
+  }
+  .nav-inner{
+    max-width:1080px;margin:0 auto;padding:18px 32px;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .brand{
+    font-family:'Fraunces',serif;font-weight:600;font-size:1.15rem;
+    display:flex;align-items:center;gap:10px;
+  }
+  .brand .mark{
+    width:22px;height:22px;border:1.5px solid var(--ink);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-size:0.65rem;font-weight:600;
+  }
+  nav.links{display:flex;gap:28px;font-size:0.92rem;color:var(--ink-soft);}
+  nav.links a{transition:color .2s;}
+  nav.links a:hover{color:var(--emerald-dark);}
+  .nav-cta{
+    font-size:0.85rem;font-weight:600;color:var(--white);
+    background:var(--emerald);padding:9px 18px;border-radius:var(--radius);
+    transition:background .2s;
+  }
+  .nav-cta:hover{background:var(--emerald-dark);}
+  @media (max-width:760px){ nav.links{display:none;} }
+
+  /* HERO */
+  .hero{padding:96px 0 64px;position:relative;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:0.78rem;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--brass);margin-bottom:18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:'';width:26px;height:1px;background:var(--brass);}
+  .hero h1{
+    font-size:clamp(2.4rem,5vw,3.6rem);line-height:1.08;max-width:820px;
+    margin-bottom:22px;
+  }
+  .hero h1 em{font-style:italic;color:var(--emerald-dark);}
+  .hero p.lede{
+    font-size:1.12rem;color:var(--ink-soft);max-width:560px;margin-bottom:36px;
+  }
+  .hero-cta{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:72px;}
+  .btn{
+    padding:13px 26px;font-size:0.92rem;font-weight:600;border-radius:var(--radius);
+    transition:all .2s;display:inline-block;
+  }
+  .btn-primary{background:var(--emerald);color:var(--white);}
+  .btn-primary:hover{background:var(--emerald-dark);transform:translateY(-1px);}
+  .btn-outline{border:1.5px solid var(--ink);color:var(--ink);}
+  .btn-outline:hover{background:var(--ink);color:var(--paper);}
+
+  /* SIGNATURE: BALANCE LINE */
+  .balance-card{
+    background:var(--white);border:1px solid var(--rule);border-radius:4px;
+    padding:36px 40px;display:grid;grid-template-columns:1fr auto 1fr;gap:24px;
+    align-items:center;max-width:760px;
+    box-shadow:0 1px 0 var(--rule);
+  }
+  .bal-side{}
+  .bal-label{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;
+    text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
+  .bal-value{font-family:'IBM Plex Mono',monospace;font-size:1.9rem;font-weight:600;}
+  .bal-side.debit .bal-value{color:var(--debit);}
+  .bal-side.credit .bal-value{color:var(--credit);text-align:right;}
+  .bal-side.credit .bal-label{text-align:right;}
+  .bal-stamp{
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:700;
+    letter-spacing:0.12em;color:var(--emerald);border:2px solid var(--emerald);
+    border-radius:50%;width:64px;height:64px;display:flex;align-items:center;
+    justify-content:center;text-align:center;transform:rotate(-8deg) scale(0.8);
+    opacity:0;transition:all .5s cubic-bezier(.2,.9,.3,1.3);
+  }
+  .bal-stamp.show{opacity:1;transform:rotate(-8deg) scale(1);}
+  @media (max-width:600px){
+    .balance-card{grid-template-columns:1fr;text-align:left;}
+    .bal-side.credit .bal-value,.bal-side.credit .bal-label{text-align:left;}
+    .bal-stamp{justify-self:start;}
+  }
+
+  section{padding:88px 0;}
+  .divider{height:1px;background:var(--rule);}
+  .section-head{margin-bottom:48px;}
+  .section-num{
+    font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--brass);
+    letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px;
+  }
+  .section-head h2{font-size:clamp(1.7rem,3vw,2.2rem);max-width:640px;}
+  .section-head p{color:var(--ink-soft);max-width:560px;margin-top:14px;}
+
+  /* ABOUT */
+  .about-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:56px;align-items:start;}
+  .about-grid p{color:var(--ink-soft);margin-bottom:16px;}
+  .tagline{
+    font-family:'Fraunces',serif;font-style:italic;font-size:1.3rem;color:var(--emerald-dark);
+    border-left:3px solid var(--emerald);padding-left:20px;margin:24px 0;
+  }
+  .stat-list{display:flex;flex-direction:column;gap:22px;}
+  .stat{border-top:1px solid var(--rule);padding-top:14px;}
+  .stat .num{font-family:'IBM Plex Mono',monospace;font-size:1.8rem;font-weight:600;color:var(--emerald-dark);}
+  .stat .lbl{font-size:0.85rem;color:var(--ink-soft);}
+
+  /* CASE STUDIES */
+  .case{
+    border:1px solid var(--rule);border-radius:4px;background:var(--white);
+    overflow:hidden;margin-bottom:32px;opacity:0;transform:translateY(18px);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  .case.visible{opacity:1;transform:translateY(0);}
+  .case-head{
+    padding:28px 36px;display:flex;justify-content:space-between;align-items:flex-start;
+    gap:20px;border-bottom:1px solid var(--rule);flex-wrap:wrap;
+  }
+  .case-tag{
+    font-family:'IBM Plex Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;
+    text-transform:uppercase;padding:4px 10px;border-radius:20px;
+    background:var(--paper-dim);color:var(--ink-soft);display:inline-block;margin-bottom:10px;
+  }
+  .case-head h3{font-size:1.5rem;}
+  .case-head .sub{color:var(--ink-soft);font-size:0.92rem;margin-top:4px;}
+  .case-body{padding:30px 36px 36px;}
+  .case-body .desc{color:var(--ink-soft);max-width:640px;margin-bottom:26px;}
+  .figure-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:26px;
+  }
+  .figure{background:var(--white);padding:16px 18px;}
+  .figure .f-label{font-size:0.72rem;color:var(--ink-soft);text-transform:uppercase;
+    letter-spacing:0.05em;margin-bottom:6px;}
+  .figure .f-value{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:1.15rem;}
+  .figure .f-value.pos{color:var(--emerald-dark);}
+  .figure .f-value.neg{color:var(--credit);}
+  .deliverables{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px;}
+  .chip{
+    font-size:0.78rem;padding:6px 12px;border:1px solid var(--rule);border-radius:20px;
+    color:var(--ink-soft);
+  }
+  .skills-demo{font-size:0.9rem;color:var(--ink);}
+  .skills-demo strong{font-weight:600;}
+
+  /* SKILLS */
+  .skills-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:1px;
+    background:var(--rule);border:1px solid var(--rule);
+  }
+  .skill-block{background:var(--white);padding:24px 26px;}
+  .skill-block h4{
+    font-family:'IBM Plex Mono',monospace;font-size:0.75rem;letter-spacing:0.06em;
+    text-transform:uppercase;color:var(--brass);margin-bottom:14px;
+  }
+  .skill-block ul{list-style:none;}
+  .skill-block li{
+    font-size:0.92rem;padding:6px 0;border-top:1px dashed var(--rule);
+  }
+  .skill-block li:first-child{border-top:none;}
+
+  /* EXPERIENCE TIMELINE */
+  .timeline{position:relative;padding-left:28px;}
+  .timeline::before{
+    content:'';position:absolute;left:0;top:6px;bottom:6px;width:1px;background:var(--rule);
+  }
+  .tl-item{position:relative;padding-bottom:38px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-item::before{
+    content:'';position:absolute;left:-33px;top:4px;width:9px;height:9px;border-radius:50%;
+    background:var(--emerald);border:2px solid var(--paper);
+  }
+  .tl-date{font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--brass);margin-bottom:6px;}
+  .tl-item h4{font-size:1.1rem;margin-bottom:4px;}
+  .tl-item .org{color:var(--ink-soft);font-size:0.9rem;margin-bottom:10px;}
+  .tl-item ul{padding-left:18px;color:var(--ink-soft);font-size:0.92rem;}
+  .tl-item li{margin-bottom:4px;}
+
+  /* CONTACT */
+  .contact-card{
+    background:var(--emerald-dark);color:var(--paper);border-radius:6px;
+    padding:56px 48px;display:grid;grid-template-columns:1.3fr 1fr;gap:40px;
+  }
+  .contact-card h2{color:var(--white);font-size:2rem;margin-bottom:14px;}
+  .contact-card p{color:#CFE0D5;max-width:420px;}
+  .contact-list{display:flex;flex-direction:column;gap:16px;}
+  .contact-list a, .contact-list span{
+    display:flex;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.18);
+    padding-bottom:14px;font-size:0.95rem;
+  }
+  .contact-list .lbl{color:#9EC2AC;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;text-transform:uppercase;}
+  @media (max-width:700px){ .contact-card{grid-template-columns:1fr;padding:40px 26px;} }
+
+  footer{padding:36px 0;text-align:center;color:var(--ink-soft);font-size:0.85rem;}
+
+  /* reveal animation base */
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease, transform .6s ease;}
+  .reveal.visible{opacity:1;transform:translateY(0);}
+
+  /* HERO PHOTO */
+  .hero-top{display:flex;align-items:center;gap:28px;margin-bottom:36px;flex-wrap:wrap;}
+  .hero-photo{
+    width:112px;height:112px;border-radius:50%;object-fit:cover;
+    border:3px solid var(--white);box-shadow:0 0 0 1px var(--rule), 0 6px 18px rgba(22,36,28,0.12);
+    flex-shrink:0;
+  }
+
+  /* CHIP BUTTONS */
+  .chip-btn{
+    font-size:0.78rem;padding:6px 12px 6px 14px;border:1px solid var(--rule);border-radius:20px;
+    color:var(--ink);background:var(--white);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    transition:all .18s;font-family:'Inter',sans-serif;
+  }
+  .chip-btn:hover{border-color:var(--emerald);color:var(--emerald-dark);background:#F1F7F3;transform:translateY(-1px);}
+  .chip-btn::after{content:'↗';font-size:0.72rem;color:var(--brass);}
+
+  /* MODAL */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(20,30,24,0.55);backdrop-filter:blur(2px);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:24px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal-box{
+    background:var(--paper);border-radius:6px;max-width:820px;width:100%;
+    max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  }
+  .modal-head{
+    padding:20px 28px;border-bottom:1px solid var(--rule);display:flex;
+    justify-content:space-between;align-items:center;flex-shrink:0;
+  }
+  .modal-head h4{font-size:1.15rem;}
+  .modal-close{
+    width:32px;height:32px;border-radius:50%;border:1px solid var(--rule);background:var(--white);
+    cursor:pointer;font-size:1rem;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;
+    transition:all .18s;
+  }
+  .modal-close:hover{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .modal-body{padding:24px 28px 30px;overflow-y:auto;}
+  .modal-meta{font-size:0.85rem;color:var(--ink-soft);margin-bottom:16px;}
+  .modal-sub{
+    font-family:'IBM Plex Mono',monospace;font-size:0.72rem;letter-spacing:0.06em;text-transform:uppercase;
+    color:var(--brass);margin:22px 0 10px;
+  }
+  .modal-sub:first-of-type{margin-top:0;}
+  .modal-note{font-size:0.85rem;color:var(--ink-soft);margin-top:14px;font-style:italic;}
+  .scroll-table{max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:4px;}
+  table.dtable{width:100%;border-collapse:collapse;font-size:0.86rem;}
+  table.dtable th{
+    text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;text-transform:uppercase;
+    letter-spacing:0.04em;color:var(--ink-soft);background:var(--paper-dim);padding:9px 12px;
+    position:sticky;top:0;
+  }
+  table.dtable td{padding:8px 12px;border-top:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:0.85rem;}
+  table.dtable tbody tr:hover{background:#F1F7F3;}
+  @media (max-width:600px){
+    .modal-box{max-height:90vh;}
+    .modal-head, .modal-body{padding-left:18px;padding-right:18px;}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <div class="brand"><span class="mark">JC</span> Joycenie Cueto</div>
+    <nav class="links">
+      <a href="#about">About</a>
+      <a href="#cases">Case Studies</a>
+      <a href="#skills">Skills</a>
+      <a href="#experience">Experience</a>
+    </nav>
+    <a class="nav-cta" href="#contact">Get in touch</a>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-top">
+      <img class="hero-photo" src="profile.jpg" alt="Joycenie Cueto">
+      <div>
+        <div class="eyebrow" style="margin-bottom:6px;">Remote Bookkeeper · Batangas City, PH → Australian hours</div>
+      </div>
+    </div>
+    <h1>Precision in every entry.<br><em>Clarity</em> in every report.</h1>
+    <p class="lede">4+ years in record-to-report accounting — journal entries, reconciliations, month-end close and BAS/GST reporting — now focused on remote bookkeeping for Australian small businesses in Xero and QuickBooks Online.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#cases">View case studies</a>
+      <a class="btn btn-outline" href="Joycenie_Cueto_Resume.pdf" target="_blank">Download résumé (PDF)</a>
+    </div>
+
+    <div class="balance-card" id="balanceCard">
+      <div class="bal-side debit">
+        <div class="bal-label">Debit — Skills applied</div>
+        <div class="bal-value mono" id="debitVal">0.00</div>
+      </div>
+      <div class="bal-stamp" id="balStamp">BAL<br>ANCED</div>
+      <div class="bal-side credit">
+        <div class="bal-label">Credit — Client value</div>
+        <div class="bal-value mono" id="creditVal">0.00</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="about">
+  <div class="wrap">
+    <div class="about-grid">
+      <div class="reveal">
+        <div class="section-num">01 / About</div>
+        <h2>Four years of getting the numbers to tie out.</h2>
+        <p>I spent over four years inside Accenture's record-to-report function — closing the books, reconciling balance sheet accounts, and reporting operating expenses for global clients. Before that, I worked collections at Festival Supermall, chasing down tenant reconciliations and repayment plans.</p>
+        <p>I'm now building a remote bookkeeping practice for Australian small businesses, pairing that close-and-reconcile discipline with Xero and QBO certifications.</p>
+        <div class="tagline">"Precision in Every Entry. Clarity in Every Report."</div>
+      </div>
+      <div class="stat-list reveal">
+        <div class="stat"><div class="num mono">4+ yrs</div><div class="lbl">Record-to-report &amp; collections experience</div></div>
+        <div class="stat"><div class="num mono">95%</div><div class="lbl">Collection efficiency achieved during a year-end close (SAP)</div></div>
+        <div class="stat"><div class="num mono">2</div><div class="lbl">Certifications — Xero Certified Advisor &amp; QBO ProAdvisor</div></div>
+        <div class="stat"><div class="num mono">5</div><div class="lbl">Platforms worked in — SAP, Xero, QBO, Excel, Blackline</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="cases">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-num">02 / Case Studies</div>
+      <h2>Two ways I prove the books are right.</h2>
+      <p>One shows how I read and act on Xero-generated reports for an Australian GST-registered business. The other shows I can build the full accounting cycle by hand, from a blank chart of accounts to a balanced set of financial statements.</p>
+    </div>
+
+    <!-- CASE STUDY 1: XERO -->
+    <div class="case">
+      <div class="case-head">
+        <div>
+          <span class="case-tag">Xero navigation</span>
+          <h3>StarGlow Productions — BAS &amp; GST reporting</h3>
+          <div class="sub">Australian sole-trader, GST accruals basis · Quarter ended 31 March 2024</div>
+        </div>
+      </div>
+      <div class="case-body">
+        <p class="desc">Navigated a full set of Xero-generated reports for a creative sole-trader business — Activity Statement, GST reconciliation, transactions by tax rate and BAS field, trial balance, profit &amp; loss, balance sheet, statement of cash flows, and payroll &amp; superannuation summaries — to confirm the BAS figures were correct before lodgement.</p>
+        <div class="figure-grid">
+          <div class="figure"><div class="f-label">Total sales (G1, GST incl.)</div><div class="f-value">$12,700.00</div></div>
+          <div class="figure"><div class="f-label">GST on sales (1A)</div><div class="f-value">$1,154.00</div></div>
+          <div class="figure"><div class="f-label">GST on purchases (1B)</div><div class="f-value">$512.00</div></div>
+          <div class="figure"><div class="f-label">Net payable to ATO (9)</div><div class="f-value neg">$642.00</div></div>
+          <div class="figure"><div class="f-label">Net profit (Jan 2024)</div><div class="f-value pos">$8,877.27</div></div>
+          <div class="figure"><div class="f-label">Net assets</div><div class="f-value pos">$7,877.27</div></div>
+        </div>
+        <div class="deliverables">
+          <button class="chip-btn" onclick="openModal('activity-statement','Activity Statement (BAS)')">Activity Statement (BAS)</button>
+          <button class="chip-btn" onclick="openModal('gst-reconciliation','GST Reconciliation')">GST Reconciliation</button>
+          <button class="chip-btn" onclick="openModal('bank-reconciliation','Bank Reconciliation')">Bank Reconciliation</button>
+          <button class="chip-btn" onclick="openModal('aged-receivables-payables','Aged Receivables &amp; Payables')">Aged Receivables &amp; Payables</button>
+          <button class="chip-btn" onclick="openModal('payroll-super','Payroll &amp; Super Summary')">Payroll &amp; Super Summary</button>
+          <button class="chip-btn" onclick="openModal('cash-flows','Statement of Cash Flows')">Statement of Cash Flows</button>
+        </div>
+        <p class="skills-demo"><strong>Demonstrates:</strong> reading and reconciling GST/BAS obligations, tying bank reconciliations to the general ledger, checking superannuation payable, and interpreting a full Xero report pack the way an Australian bookkeeper would before lodging a quarterly BAS.</p>
+      </div>
+    </div>
+
+    <!-- CASE STUDY 2: MANUAL EXCEL -->
+    <div class="case">
+      <div class="case-head">
+        <div>
+          <span class="case-tag">Manual bookkeeping — Excel</span>
+          <h3>Wesley Auto Repair Services — full accounting cycle</h3>
+          <div class="sub">Sole proprietorship · Period: 1–31 December 2019</div>
+        </div>
+      </div>
+      <div class="case-body">
+        <p class="desc">Built a fully formula-driven Excel workbook from scratch for a fictional auto repair business — chart of accounts, general journal, general ledger, trial balance, and a complete set of financial statements — with journal entries as the only manual input and every statement updating automatically. A live dashboard flags Trial Balance and Balance Sheet status in real time.</p>
+        <div class="figure-grid">
+          <div class="figure"><div class="f-label">Total revenue</div><div class="f-value pos">$122,870.25</div></div>
+          <div class="figure"><div class="f-label">Total operating expenses</div><div class="f-value">$77,037.93</div></div>
+          <div class="figure"><div class="f-label">Net income</div><div class="f-value pos">$45,832.32</div></div>
+          <div class="figure"><div class="f-label">Total assets</div><div class="f-value">$325,568.62</div></div>
+          <div class="figure"><div class="f-label">Total liabilities</div><div class="f-value">$132,367.80</div></div>
+          <div class="figure"><div class="f-label">Owner's equity</div><div class="f-value pos">$193,200.82</div></div>
+        </div>
+        <div class="deliverables">
+          <button class="chip-btn" onclick="openModal('chart-of-accounts','Chart of Accounts')">Chart of Accounts</button>
+          <button class="chip-btn" onclick="openModal('general-journal','General Journal')">General Journal</button>
+          <button class="chip-btn" onclick="openModal('general-ledger','General Ledger')">General Ledger</button>
+          <button class="chip-btn" onclick="openModal('trial-balance','Trial Balance')">Trial Balance</button>
+          <button class="chip-btn" onclick="openModal('financial-statements',&quot;P&amp;L / Owner's Equity / Balance Sheet&quot;)">P&amp;L / Owner's Equity / Balance Sheet</button>
+          <button class="chip-btn" onclick="openModal('cash-flow-statement','Cash Flow Statement')">Cash Flow Statement</button>
+          <button class="chip-btn" onclick="openModal('dashboard','Live KPI Dashboard')">Live KPI Dashboard</button>
+        </div>
+        <p class="skills-demo"><strong>Demonstrates:</strong> end-to-end manual bookkeeping — recording journal entries, posting to the ledger, proving debits equal credits, and rolling everything into financial statements — plus building Excel automation that a small-business owner can hand off entries into and trust the outputs.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="skills">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-num">03 / Skills &amp; Tools</div>
+      <h2>What I bring to the ledger.</h2>
+    </div>
+    <div class="skills-grid reveal">
+      <div class="skill-block">
+        <h4>Software</h4>
+        <ul>
+          <li>Xero (Certified Advisor)</li>
+          <li>QuickBooks Online (ProAdvisor)</li>
+          <li>Excel &amp; Google Sheets</li>
+          <li>SAP ECC / S4HANA</li>
+          <li>Blackline</li>
+        </ul>
+      </div>
+      <div class="skill-block">
+        <h4>Core Processes</h4>
+        <ul>
+          <li>Journal entries &amp; adjustments</li>
+          <li>Balance sheet reconciliation</li>
+          <li>Month-end close</li>
+          <li>BAS &amp; GST reporting</li>
+          <li>Accounts receivable / collections</li>
+        </ul>
+      </div>
+      <div class="skill-block">
+        <h4>Reporting</h4>
+        <ul>
+          <li>Trial balance &amp; general ledger</li>
+          <li>Profit &amp; loss / balance sheet</li>
+          <li>Statement of cash flows</li>
+          <li>Payroll &amp; superannuation summaries</li>
+          <li>Audit support documentation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="experience">
+  <div class="wrap">
+    <div class="section-head reveal">
+      <div class="section-num">04 / Experience</div>
+      <h2>Where the reconciliation habit was built.</h2>
+    </div>
+    <div class="timeline reveal">
+      <div class="tl-item">
+        <div class="tl-date">Sep 2025 – Apr 2026</div>
+        <h4>Collections Support Associate</h4>
+        <div class="org">Accenture Inc.</div>
+        <ul>
+          <li>Managed collection and recovery of customer receivables and outstanding debts</li>
+          <li>Improved cash collection performance while reducing aging accounts</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">Aug 2022 – Aug 2025</div>
+        <h4>Record-to-Report Ops Associate (OPEX Accounting)</h4>
+        <div class="org">Accenture Inc.</div>
+        <ul>
+          <li>Performed month-end close: journal entries, adjusting entries, balance sheet reconciliations</li>
+          <li>Prepared operating expense reports for Advertising &amp; Promotion and R&amp;D accounts</li>
+          <li>Supported internal and external audit requirements</li>
+        </ul>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">May 2021 – Jan 2022</div>
+        <h4>Collection Assistant</h4>
+        <div class="org">Festival Supermall Inc.</div>
+        <ul>
+          <li>Monitored tenant accounts: reconciliations, adjustments, credit memo processing</li>
+          <li>Reviewed tenant repayment plan requests</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<section id="contact">
+  <div class="wrap">
+    <div class="contact-card reveal">
+      <div>
+        <h2>Let's get your books in order.</h2>
+        <p>Open to fully remote bookkeeping and R2R accounting roles for Australian businesses, day-shift hours. Happy to walk through either case study in more depth.</p>
+      </div>
+      <div class="contact-list">
+        <a href="mailto:joyceniecueto@gmail.com"><span class="lbl">Email</span><span>joyceniecueto@gmail.com</span></a>
+        <span><span class="lbl">Phone</span><span>+63 976 012 8888</span></span>
+        <a href="https://www.linkedin.com/in/joyceniecueto0611" target="_blank"><span class="lbl">LinkedIn</span><span>/in/joyceniecueto0611</span></a>
+        <span><span class="lbl">Location</span><span>Batangas City, PH</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>© 2026 Joycenie Cueto — Bookkeeping &amp; Accounting Portfolio</footer>
+
+<script>
+  // Reveal on scroll
+  const revealEls = document.querySelectorAll('.reveal, .case');
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('visible'); }
+    });
+  },{threshold:0.15});
+  revealEls.forEach(el=>io.observe(el));
+
+  // Hero balance counter animation
+  function animateCount(el, target, duration){
+    const start = performance.now();
+    function tick(now){
+      const p = Math.min((now-start)/duration,1);
+      const eased = 1 - Math.pow(1-p,3);
+      el.textContent = (target*eased).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+      if(p<1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+  window.addEventListener('load', ()=>{
+    animateCount(document.getElementById('debitVal'), 45832.32, 1400);
+    animateCount(document.getElementById('creditVal'), 45832.32, 1400);
+    setTimeout(()=>{ document.getElementById('balStamp').classList.add('show'); }, 1500);
+  });
+</script>
+
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h4 id="modalTitle"></h4>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  const REPORT_DATA = {"activity-statement": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 Activity Statement \u00b7 Quarter ended 31 March 2024</p>\n<table class=\"dtable \"><thead><tr><th>Field</th><th>Code</th><th>Amount</th></tr></thead><tbody><tr><td>Total sales</td><td>G1</td><td>$12,700.00</td></tr><tr><td>GST on sales</td><td>1A</td><td>$1,154.00</td></tr><tr><td>GST on purchases</td><td>1B</td><td>$512.00</td></tr><tr><td>Total owed to the ATO</td><td>8A</td><td>$1,154.00</td></tr><tr><td>Total owed by the ATO</td><td>8B</td><td>$512.00</td></tr><tr><td><strong>Your payment</strong></td><td>9</td><td><strong>$642.00</strong></td></tr></tbody></table>\n<p class=\"modal-note\">GST accounting method: accruals basis. Reconciled against the GST Reconciliation and Trial Balance reports before lodgement.</p>\n", "gst-reconciliation": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 GST Reconciliation \u00b7 1\u201331 Jan 2024</p>\n<h5 class=\"modal-sub\">GST Collected</h5>\n<table class=\"dtable \"><thead><tr><th>Period</th><th>Collected</th><th>Adjustments</th><th>Filed</th><th>Unfiled</th></tr></thead><tbody><tr><td>Opening balance</td><td></td><td></td><td></td><td>$0.00</td></tr><tr><td>1 Jan \u2013 31 Jan 2024</td><td>$1,154.55</td><td>$0.00</td><td>$0.00</td><td>$1,154.55</td></tr><tr><td><strong>Total</strong></td><td><strong>$1,154.55</strong></td><td>$0.00</td><td>$0.00</td><td><strong>$1,154.55</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">GST Paid</h5>\n<table class=\"dtable \"><thead><tr><th>Period</th><th>Paid</th><th>On Imports</th><th>Adjustments</th><th>Filed</th><th>Unfiled</th></tr></thead><tbody><tr><td>Opening balance</td><td></td><td></td><td></td><td></td><td>$0.00</td></tr><tr><td>1 Jan \u2013 31 Jan 2024</td><td>$512.27</td><td>$0.00</td><td>$0.00</td><td>$0.00</td><td>$512.27</td></tr><tr><td><strong>Total</strong></td><td><strong>$512.27</strong></td><td>$0.00</td><td>$0.00</td><td>$0.00</td><td><strong>$512.27</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">GST Account Summary</h5>\n<table class=\"dtable \"><thead><tr><th>Item</th><th>Amount</th></tr></thead><tbody><tr><td>GST owing</td><td>($800.00)</td></tr><tr><td>Unfiled GST</td><td>$642.28</td></tr><tr><td><strong>Balance at 31 Jan 2024</strong></td><td><strong>($157.72)</strong></td></tr></tbody></table>\n", "bank-reconciliation": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 Business Account Reconciliation \u00b7 As at 31 Jan 2024</p>\n<table class=\"dtable \"><thead><tr><th>Item</th><th>Amount</th></tr></thead><tbody><tr><td>Balance in Xero</td><td>$4,037.73</td></tr><tr><td>Plus outstanding payments</td><td>$0.00</td></tr><tr><td>Less outstanding receipts</td><td>$0.00</td></tr><tr><td>Plus unreconciled statement lines</td><td>$0.00</td></tr><tr><td><strong>Statement balance (calculated)</strong></td><td><strong>$4,037.73</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">Bank Statement \u2014 Business Account (Jan 2024)</h5>\n<table class=\"dtable \"><thead><tr><th>Date</th><th>Description</th><th>Amount</th></tr></thead><tbody><tr><td>5 Jan 2024</td><td>Video production for Client A</td><td>$5,000.00</td></tr><tr><td>8 Jan 2024</td><td>Purchase of Canon camera and lenses</td><td>($3,500.00)</td></tr><tr><td>10 Jan 2024</td><td>Event photography for wedding client</td><td>$2,500.00</td></tr><tr><td>12 Jan 2024</td><td>Adobe Creative Cloud subscription</td><td>($90.00)</td></tr><tr><td>14 Jan 2024</td><td>Business insurance (annual policy)</td><td>($727.27)</td></tr><tr><td>15 Jan 2024</td><td>Freelance writing gig for blog post</td><td>$1,200.00</td></tr><tr><td>18 Jan 2024</td><td>Bpay payment</td><td>($2,000.00)</td></tr><tr><td>18 Jan 2024</td><td>Music video editing</td><td>$4,000.00</td></tr><tr><td>20 Jan 2024</td><td>Travel for client meeting (Uber)</td><td>($45.00)</td></tr><tr><td>25 Jan 2024</td><td>GST payment to ATO</td><td>($800.00)</td></tr><tr><td>28 Jan 2024</td><td>Superannuation payment</td><td>($500.00)</td></tr><tr><td>30 Jan 2024</td><td>Personal withdrawal</td><td>($1,000.00)</td></tr></tbody></table>\n<p class=\"modal-note\">Opening balance $0.00 \u2192 closing balance $4,037.73. All statement lines reconciled to Xero (100% matched).</p>\n", "aged-receivables-payables": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 Aged Payables &amp; Aged Receivables Summary \u00b7 As at 31 Jan 2024</p>\n<p class=\"modal-note\">Both reports returned no outstanding balances for the period \u2014 every invoice and bill was fully settled within January, so there is nothing aged in either report. Confirmed by cross-checking the Balance Sheet, which shows no Accounts Receivable or Accounts Payable line.</p>\n", "payroll-super": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 Payroll Employee Summary \u00b7 July 2024</p>\n<table class=\"dtable \"><thead><tr><th>Employee</th><th>Earnings</th><th>Deductions</th><th>Tax</th><th>Super</th><th>Net Pay</th></tr></thead><tbody><tr><td>Emma Davis</td><td>$2,307.69</td><td>$0.00</td><td>$384.00</td><td>$265.38</td><td>$1,923.69</td></tr><tr><td>John Smith</td><td>$2,660.00</td><td>$0.00</td><td>$498.00</td><td>$305.90</td><td>$2,162.00</td></tr><tr><td>Liam Turner</td><td>$2,700.00</td><td>$0.00</td><td>$734.00</td><td>$310.50</td><td>$1,966.00</td></tr><tr><td>Mark Wilson</td><td>$3,200.00</td><td>$0.00</td><td>$894.00</td><td>$368.00</td><td>$2,306.00</td></tr><tr><td>Sarah Brown</td><td>$2,884.62</td><td>$0.00</td><td>$570.00</td><td>$331.73</td><td>$2,314.62</td></tr><tr><td><strong>Total</strong></td><td><strong>$13,752.31</strong></td><td>$0.00</td><td><strong>$3,080.00</strong></td><td><strong>$1,581.51</strong></td><td><strong>$10,672.31</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">Superannuation Payments (SGC, 15 Jul 2024)</h5>\n<table class=\"dtable \"><thead><tr><th>Employee</th><th>Super Fund</th><th>Amount</th></tr></thead><tbody><tr><td>Emma Davis</td><td>Australian Retirement Trust Super Savings</td><td>$265.38</td></tr><tr><td>John Smith</td><td>AustralianSuper</td><td>$305.90</td></tr><tr><td>Liam Turner</td><td>HESTA Super</td><td>$310.50</td></tr><tr><td>Mark Wilson</td><td>HOSTPLUS Superannuation Fund</td><td>$368.00</td></tr><tr><td>Sarah Brown</td><td>Rest Super</td><td>$331.73</td></tr><tr><td><strong>Total</strong></td><td></td><td><strong>$1,581.51</strong></td></tr></tbody></table>\n", "cash-flows": "\n<p class=\"modal-meta\">StarGlow Productions \u00b7 Statement of Cash Flows \u00b7 Month ended 31 Jan 2024</p>\n<table class=\"dtable \"><thead><tr><th>Activity</th><th>Amount</th></tr></thead><tbody><tr><td>Receipts from customers</td><td>$12,700.00</td></tr><tr><td>Payments to suppliers and employees</td><td>($2,862.27)</td></tr><tr><td>Cash receipts from other operating activities</td><td>($1,118.18)</td></tr><tr><td><strong>Net cash from Operating Activities</strong></td><td><strong>$8,719.55</strong></td></tr><tr><td>Payment for property, plant and equipment</td><td>($3,181.82)</td></tr><tr><td><strong>Net cash from Investing Activities</strong></td><td><strong>($3,181.82)</strong></td></tr><tr><td>Other cash items from financing activities</td><td>($1,500.00)</td></tr><tr><td><strong>Net cash from Financing Activities</strong></td><td><strong>($1,500.00)</strong></td></tr><tr><td><strong>Net Cash Flows</strong></td><td><strong>$4,037.73</strong></td></tr><tr><td>Cash at beginning of period</td><td>$0.00</td></tr><tr><td><strong>Cash at end of period</strong></td><td><strong>$4,037.73</strong></td></tr></tbody></table>\n", "chart-of-accounts": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 Chart of Accounts</p>\n<table class=\"dtable \"><thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Category</th><th>Normal Balance</th></tr></thead><tbody><tr><td>101</td><td>Cash</td><td>Asset</td><td>Current Asset</td><td>Debit</td></tr><tr><td>102</td><td>Accounts Receivable</td><td>Asset</td><td>Current Asset</td><td>Debit</td></tr><tr><td>103</td><td>Note Receivable</td><td>Asset</td><td>Current Asset</td><td>Debit</td></tr><tr><td>110</td><td>Tools</td><td>Asset</td><td>Non-Current Asset</td><td>Debit</td></tr><tr><td>111</td><td>Furniture & Fixtures</td><td>Asset</td><td>Non-Current Asset</td><td>Debit</td></tr><tr><td>112</td><td>Office Equipment</td><td>Asset</td><td>Non-Current Asset</td><td>Debit</td></tr><tr><td>113</td><td>Repair Equipment</td><td>Asset</td><td>Non-Current Asset</td><td>Debit</td></tr><tr><td>201</td><td>Accounts Payable</td><td>Liability</td><td>Current Liability</td><td>Credit</td></tr><tr><td>202</td><td>Note Payable</td><td>Liability</td><td>Current Liability</td><td>Credit</td></tr><tr><td>210</td><td>Loan Payable</td><td>Liability</td><td>Non-Current Liability</td><td>Credit</td></tr><tr><td>301</td><td>Wesley Capital</td><td>Equity</td><td>Owner's Equity</td><td>Credit</td></tr><tr><td>302</td><td>Wesley Drawing</td><td>Equity</td><td>Owner's Equity</td><td>Debit</td></tr><tr><td>401</td><td>Repair Income</td><td>Revenue</td><td>Operating Revenue</td><td>Credit</td></tr><tr><td>402</td><td>Rental Income</td><td>Revenue</td><td>Other Income</td><td>Credit</td></tr><tr><td>501</td><td>Salaries Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>502</td><td>Rent Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>503</td><td>Supplies Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>504</td><td>Light & Water Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>505</td><td>Gas & Oil Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>506</td><td>Communication Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>507</td><td>Taxes & License Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr><tr><td>508</td><td>Advertising Expense</td><td>Expense</td><td>Operating Expense</td><td>Debit</td></tr></tbody></table>\n", "general-journal": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 General Journal \u00b7 Dec 2019 (29 entries, 62 lines) \u2014 Total debits = Total credits = $657,396.93</p>\n<div class=\"scroll-table\">\n<table class=\"dtable \"><thead><tr><th>Date</th><th>JE#</th><th>Account</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody><tr><td>01 Dec 2019</td><td>1</td><td>Cash</td><td>Owner capital contribution - cash</td><td>$150,000.00</td><td></td></tr><tr><td>01 Dec 2019</td><td>1</td><td>Wesley Capital</td><td>Owner capital contribution - cash</td><td></td><td>$150,000.00</td></tr><tr><td>01 Dec 2019</td><td>2</td><td>Taxes & License Expense</td><td>Paid licenses and permits</td><td>$1,250.50</td><td></td></tr><tr><td>01 Dec 2019</td><td>2</td><td>Cash</td><td>Paid licenses and permits</td><td></td><td>$1,250.50</td></tr><tr><td>01 Dec 2019</td><td>3</td><td>Repair Equipment</td><td>Purchased repair equipment for cash</td><td>$25,000.00</td><td></td></tr><tr><td>01 Dec 2019</td><td>3</td><td>Cash</td><td>Purchased repair equipment for cash</td><td></td><td>$25,000.00</td></tr><tr><td>02 Dec 2019</td><td>4</td><td>Cash</td><td>Cash received for repair service rendered</td><td>$10,260.00</td><td></td></tr><tr><td>02 Dec 2019</td><td>4</td><td>Repair Income</td><td>Cash received for repair service rendered</td><td></td><td>$10,260.00</td></tr><tr><td>03 Dec 2019</td><td>5</td><td>Furniture & Fixtures</td><td>Purchased office tables and chairs on credit - Star Trading</td><td>$12,530.00</td><td></td></tr><tr><td>03 Dec 2019</td><td>5</td><td>Accounts Payable</td><td>Purchased office tables and chairs on credit - Star Trading</td><td></td><td>$12,530.00</td></tr><tr><td>03 Dec 2019</td><td>6</td><td>Office Equipment</td><td>Purchased computer for cash - Burroughs, Ltd.</td><td>$24,000.00</td><td></td></tr><tr><td>03 Dec 2019</td><td>6</td><td>Cash</td><td>Purchased computer for cash - Burroughs, Ltd.</td><td></td><td>$24,000.00</td></tr><tr><td>04 Dec 2019</td><td>7</td><td>Tools</td><td>Owner invested personal tools in the business</td><td>$2,368.50</td><td></td></tr><tr><td>04 Dec 2019</td><td>7</td><td>Wesley Capital</td><td>Owner invested personal tools in the business</td><td></td><td>$2,368.50</td></tr><tr><td>05 Dec 2019</td><td>8</td><td>Rent Expense</td><td>Paid rent for the shop</td><td>$3,800.00</td><td></td></tr><tr><td>05 Dec 2019</td><td>8</td><td>Cash</td><td>Paid rent for the shop</td><td></td><td>$3,800.00</td></tr><tr><td>06 Dec 2019</td><td>9</td><td>Accounts Receivable</td><td>Billed customer for repair service rendered, on account</td><td>$12,560.25</td><td></td></tr><tr><td>06 Dec 2019</td><td>9</td><td>Repair Income</td><td>Billed customer for repair service rendered, on account</td><td></td><td>$12,560.25</td></tr><tr><td>07 Dec 2019</td><td>10</td><td>Repair Equipment</td><td>Purchased additional repair equipment on credit - Tycon Company</td><td>$32,000.00</td><td></td></tr><tr><td>07 Dec 2019</td><td>10</td><td>Accounts Payable</td><td>Purchased additional repair equipment on credit - Tycon Company</td><td></td><td>$32,000.00</td></tr><tr><td>07 Dec 2019</td><td>11</td><td>Supplies Expense</td><td>Purchased office supplies on account - Conan Bookstore</td><td>$2,367.80</td><td></td></tr><tr><td>07 Dec 2019</td><td>11</td><td>Accounts Payable</td><td>Purchased office supplies on account - Conan Bookstore</td><td></td><td>$2,367.80</td></tr><tr><td>08 Dec 2019</td><td>12</td><td>Note Receivable</td><td>Received promissory note from Mr. Francis for repair service rendered</td><td>$15,500.00</td><td></td></tr><tr><td>08 Dec 2019</td><td>12</td><td>Repair Income</td><td>Received promissory note from Mr. Francis for repair service rendered</td><td></td><td>$15,500.00</td></tr><tr><td>09 Dec 2019</td><td>13</td><td>Cash</td><td>Secured 3-year loan from ANZ Bank</td><td>$120,000.00</td><td></td></tr><tr><td>09 Dec 2019</td><td>13</td><td>Loan Payable</td><td>Secured 3-year loan from ANZ Bank</td><td></td><td>$120,000.00</td></tr><tr><td>10 Dec 2019</td><td>14</td><td>Furniture & Fixtures</td><td>Issued 60-day 6% promissory note to Melbourne Traders for chairs</td><td>$3,000.00</td><td></td></tr><tr><td>10 Dec 2019</td><td>14</td><td>Note Payable</td><td>Issued 60-day 6% promissory note to Melbourne Traders for chairs</td><td></td><td>$3,000.00</td></tr><tr><td>12 Dec 2019</td><td>15</td><td>Advertising Expense</td><td>Paid advertisement</td><td>$4,500.00</td><td></td></tr><tr><td>12 Dec 2019</td><td>15</td><td>Cash</td><td>Paid advertisement</td><td></td><td>$4,500.00</td></tr><tr><td>15 Dec 2019</td><td>16</td><td>Light & Water Expense</td><td>Paid electricity and water bills</td><td>$8,400.38</td><td></td></tr><tr><td>15 Dec 2019</td><td>16</td><td>Light & Water Expense</td><td>Paid electricity and water bills</td><td>$1,234.50</td><td></td></tr><tr><td>15 Dec 2019</td><td>16</td><td>Cash</td><td>Paid electricity and water bills</td><td></td><td>$9,634.88</td></tr><tr><td>15 Dec 2019</td><td>17</td><td>Salaries Expense</td><td>Paid salaries of mechanic, helpers, and clerks</td><td>$25,668.00</td><td></td></tr><tr><td>15 Dec 2019</td><td>17</td><td>Cash</td><td>Paid salaries of mechanic, helpers, and clerks</td><td></td><td>$25,668.00</td></tr><tr><td>16 Dec 2019</td><td>18</td><td>Cash</td><td>Cash received from various customers for repair services rendered</td><td>$32,550.00</td><td></td></tr><tr><td>16 Dec 2019</td><td>18</td><td>Repair Income</td><td>Cash received from various customers for repair services rendered</td><td></td><td>$32,550.00</td></tr><tr><td>18 Dec 2019</td><td>19</td><td>Accounts Payable</td><td>Partial payment made to Star Trading</td><td>$5,530.00</td><td></td></tr><tr><td>18 Dec 2019</td><td>19</td><td>Cash</td><td>Partial payment made to Star Trading</td><td></td><td>$5,530.00</td></tr><tr><td>20 Dec 2019</td><td>20</td><td>Cash</td><td>Mr. Francis paid promissory note in full, without interest (see Dec 8)</td><td>$15,500.00</td><td></td></tr><tr><td>20 Dec 2019</td><td>20</td><td>Note Receivable</td><td>Mr. Francis paid promissory note in full, without interest (see Dec 8)</td><td></td><td>$15,500.00</td></tr><tr><td>21 Dec 2019</td><td>21</td><td>Wesley Drawing</td><td>Owner withdrew cash for personal use</td><td>$5,000.00</td><td></td></tr><tr><td>21 Dec 2019</td><td>21</td><td>Cash</td><td>Owner withdrew cash for personal use</td><td></td><td>$5,000.00</td></tr><tr><td>25 Dec 2019</td><td>22</td><td>Cash</td><td>Billed customer for repair service rendered, 50% down payment received</td><td>$12,500.00</td><td></td></tr><tr><td>25 Dec 2019</td><td>22</td><td>Accounts Receivable</td><td>Billed customer for repair service rendered, 50% down payment received</td><td>$12,500.00</td><td></td></tr><tr><td>25 Dec 2019</td><td>22</td><td>Repair Income</td><td>Billed customer for repair service rendered, 50% down payment received</td><td></td><td>$25,000.00</td></tr><tr><td>27 Dec 2019</td><td>23</td><td>Tools</td><td>Purchased additional tools from Elmar Corporation, $2,000 down</td><td>$10,000.00</td><td></td></tr><tr><td>27 Dec 2019</td><td>23</td><td>Cash</td><td>Purchased additional tools from Elmar Corporation, $2,000 down</td><td></td><td>$2,000.00</td></tr><tr><td>27 Dec 2019</td><td>23</td><td>Accounts Payable</td><td>Purchased additional tools from Elmar Corporation, $2,000 down</td><td></td><td>$8,000.00</td></tr><tr><td>30 Dec 2019</td><td>24</td><td>Communication Expense</td><td>Paid Telstra telephone bill</td><td>$2,156.75</td><td></td></tr><tr><td>30 Dec 2019</td><td>24</td><td>Cash</td><td>Paid Telstra telephone bill</td><td></td><td>$2,156.75</td></tr><tr><td>31 Dec 2019</td><td>25</td><td>Salaries Expense</td><td>Paid salaries of employees and gas & oil</td><td>$24,660.00</td><td></td></tr><tr><td>31 Dec 2019</td><td>25</td><td>Gas & Oil Expense</td><td>Paid salaries of employees and gas & oil</td><td>$3,000.00</td><td></td></tr><tr><td>31 Dec 2019</td><td>25</td><td>Cash</td><td>Paid salaries of employees and gas & oil</td><td></td><td>$27,660.00</td></tr><tr><td>31 Dec 2019</td><td>26</td><td>Accounts Receivable</td><td>Billed customer for repair services rendered</td><td>$24,500.00</td><td></td></tr><tr><td>31 Dec 2019</td><td>26</td><td>Repair Income</td><td>Billed customer for repair services rendered</td><td></td><td>$24,500.00</td></tr><tr><td>31 Dec 2019</td><td>27</td><td>Loan Payable</td><td>Paid part of ANZ loan (see Dec 9)</td><td>$40,000.00</td><td></td></tr><tr><td>31 Dec 2019</td><td>27</td><td>Cash</td><td>Paid part of ANZ loan (see Dec 9)</td><td></td><td>$40,000.00</td></tr><tr><td>31 Dec 2019</td><td>28</td><td>Cash</td><td>Tenant paid rental for portion of office space occupied</td><td>$2,500.00</td><td></td></tr><tr><td>31 Dec 2019</td><td>28</td><td>Rental Income</td><td>Tenant paid rental for portion of office space occupied</td><td></td><td>$2,500.00</td></tr><tr><td>31 Dec 2019</td><td>29</td><td>Cash</td><td>Collected in full the account of a customer (see Dec 6)</td><td>$12,560.25</td><td></td></tr><tr><td>31 Dec 2019</td><td>29</td><td>Accounts Receivable</td><td>Collected in full the account of a customer (see Dec 6)</td><td></td><td>$12,560.25</td></tr></tbody></table>\n</div>\n", "general-ledger": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 General Ledger \u00b7 Account 101 \u2014 Cash (interactive account selector in the live workbook)</p>\n<table class=\"dtable \"><thead><tr><th>Ending Balance</th><th>Total Debits</th><th>Total Credits</th></tr></thead><tbody><tr><td>$179,670.12</td><td>$355,870.25</td><td>$176,200.13</td></tr></tbody></table>\n<div class=\"scroll-table\">\n<table class=\"dtable \"><thead><tr><th>Date</th><th>JE#</th><th>Description</th><th>Debit</th><th>Credit</th><th>Running Balance</th></tr></thead><tbody><tr><td>Date</td><td>JE No.</td><td>Description</td><td>Debit</td><td>Credit</td><td>Running Balance</td></tr><tr><td>01 Dec 2019</td><td>1</td><td>Owner capital contribution - cash</td><td>$150,000.00</td><td></td><td>$150,000.00</td></tr><tr><td>01 Dec 2019</td><td>2</td><td>Paid licenses and permits</td><td></td><td>$1,250.50</td><td>$148,749.50</td></tr><tr><td>01 Dec 2019</td><td>3</td><td>Purchased repair equipment for cash</td><td></td><td>$25,000.00</td><td>$123,749.50</td></tr><tr><td>02 Dec 2019</td><td>4</td><td>Cash received for repair service rendered</td><td>$10,260.00</td><td></td><td>$134,009.50</td></tr><tr><td>03 Dec 2019</td><td>6</td><td>Purchased computer for cash - Burroughs, Ltd.</td><td></td><td>$24,000.00</td><td>$110,009.50</td></tr><tr><td>05 Dec 2019</td><td>8</td><td>Paid rent for the shop</td><td></td><td>$3,800.00</td><td>$106,209.50</td></tr><tr><td>09 Dec 2019</td><td>13</td><td>Secured 3-year loan from ANZ Bank</td><td>$120,000.00</td><td></td><td>$226,209.50</td></tr><tr><td>12 Dec 2019</td><td>15</td><td>Paid advertisement</td><td></td><td>$4,500.00</td><td>$221,709.50</td></tr><tr><td>15 Dec 2019</td><td>16</td><td>Paid electricity and water bills</td><td></td><td>$9,634.88</td><td>$212,074.62</td></tr><tr><td>15 Dec 2019</td><td>17</td><td>Paid salaries of mechanic, helpers, and clerks</td><td></td><td>$25,668.00</td><td>$186,406.62</td></tr><tr><td>16 Dec 2019</td><td>18</td><td>Cash received from various customers for repair services rendered</td><td>$32,550.00</td><td></td><td>$218,956.62</td></tr><tr><td>18 Dec 2019</td><td>19</td><td>Partial payment made to Star Trading</td><td></td><td>$5,530.00</td><td>$213,426.62</td></tr><tr><td>20 Dec 2019</td><td>20</td><td>Mr. Francis paid promissory note in full, without interest (see Dec 8)</td><td>$15,500.00</td><td></td><td>$228,926.62</td></tr><tr><td>21 Dec 2019</td><td>21</td><td>Owner withdrew cash for personal use</td><td></td><td>$5,000.00</td><td>$223,926.62</td></tr><tr><td>25 Dec 2019</td><td>22</td><td>Billed customer for repair service rendered, 50% down payment received</td><td>$12,500.00</td><td></td><td>$236,426.62</td></tr><tr><td>27 Dec 2019</td><td>23</td><td>Purchased additional tools from Elmar Corporation, $2,000 down</td><td></td><td>$2,000.00</td><td>$234,426.62</td></tr><tr><td>30 Dec 2019</td><td>24</td><td>Paid Telstra telephone bill</td><td></td><td>$2,156.75</td><td>$232,269.87</td></tr><tr><td>31 Dec 2019</td><td>25</td><td>Paid salaries of employees and gas & oil</td><td></td><td>$27,660.00</td><td>$204,609.87</td></tr><tr><td>31 Dec 2019</td><td>27</td><td>Paid part of ANZ loan (see Dec 9)</td><td></td><td>$40,000.00</td><td>$164,609.87</td></tr><tr><td>31 Dec 2019</td><td>28</td><td>Tenant paid rental for portion of office space occupied</td><td>$2,500.00</td><td></td><td>$167,109.87</td></tr><tr><td>31 Dec 2019</td><td>29</td><td>Collected in full the account of a customer (see Dec 6)</td><td>$12,560.25</td><td></td><td>$179,670.12</td></tr></tbody></table>\n</div>\n", "trial-balance": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 Trial Balance \u00b7 As of 31 Dec 2019</p>\n<table class=\"dtable \"><thead><tr><th>Code</th><th>Account</th><th>Type</th><th>Debit</th><th>Credit</th></tr></thead><tbody><tr><td>101</td><td>Cash</td><td>Asset</td><td>$179,670.12</td><td></td></tr><tr><td>102</td><td>Accounts Receivable</td><td>Asset</td><td>$37,000.00</td><td></td></tr><tr><td>103</td><td>Note Receivable</td><td>Asset</td><td></td><td></td></tr><tr><td>110</td><td>Tools</td><td>Asset</td><td>$12,368.50</td><td></td></tr><tr><td>111</td><td>Furniture & Fixtures</td><td>Asset</td><td>$15,530.00</td><td></td></tr><tr><td>112</td><td>Office Equipment</td><td>Asset</td><td>$24,000.00</td><td></td></tr><tr><td>113</td><td>Repair Equipment</td><td>Asset</td><td>$57,000.00</td><td></td></tr><tr><td>201</td><td>Accounts Payable</td><td>Liability</td><td></td><td>$49,367.80</td></tr><tr><td>202</td><td>Note Payable</td><td>Liability</td><td></td><td>$3,000.00</td></tr><tr><td>210</td><td>Loan Payable</td><td>Liability</td><td></td><td>$80,000.00</td></tr><tr><td>301</td><td>Wesley Capital</td><td>Equity</td><td></td><td>$152,368.50</td></tr><tr><td>302</td><td>Wesley Drawing</td><td>Equity</td><td>$5,000.00</td><td></td></tr><tr><td>401</td><td>Repair Income</td><td>Revenue</td><td></td><td>$120,370.25</td></tr><tr><td>402</td><td>Rental Income</td><td>Revenue</td><td></td><td>$2,500.00</td></tr><tr><td>501</td><td>Salaries Expense</td><td>Expense</td><td>$50,328.00</td><td></td></tr><tr><td>502</td><td>Rent Expense</td><td>Expense</td><td>$3,800.00</td><td></td></tr><tr><td>503</td><td>Supplies Expense</td><td>Expense</td><td>$2,367.80</td><td></td></tr><tr><td>504</td><td>Light & Water Expense</td><td>Expense</td><td>$9,634.88</td><td></td></tr><tr><td>505</td><td>Gas & Oil Expense</td><td>Expense</td><td>$3,000.00</td><td></td></tr><tr><td>506</td><td>Communication Expense</td><td>Expense</td><td>$2,156.75</td><td></td></tr><tr><td>507</td><td>Taxes & License Expense</td><td>Expense</td><td>$1,250.50</td><td></td></tr><tr><td>508</td><td>Advertising Expense</td><td>Expense</td><td>$4,500.00</td><td></td></tr><tr><td>508</td><td>Advertising Expense</td><td>Expense</td><td>$4,500.00</td><td></td></tr><tr><td>Check:</td><td>BALANCED</td><td>None</td><td></td><td></td></tr></tbody></table>\n<table class=\"dtable \"><thead><tr><th></th><th>Total</th></tr></thead><tbody><tr><td></td><td><strong>$407,606.55</strong> / <strong>$407,606.55</strong> \u2014 BALANCED</td></tr></tbody></table>\n", "financial-statements": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 Dec 2019</p>\n<h5 class=\"modal-sub\">Profit and Loss</h5>\n<table class=\"dtable \"><thead><tr><th>Account</th><th>Amount</th></tr></thead><tbody><tr><td>401 \u2013 Repair Income</td><td>$120,370.25</td></tr><tr><td>402 \u2013 Rental Income</td><td>$2,500.00</td></tr><tr><td><strong>Total Revenue</strong></td><td><strong>$122,870.25</strong></td></tr><tr><td>501 \u2013 Salaries Expense</td><td>$50,328.00</td></tr><tr><td>502 \u2013 Rent Expense</td><td>$3,800.00</td></tr><tr><td>503 \u2013 Supplies Expense</td><td>$2,367.80</td></tr><tr><td>504 \u2013 Light &amp; Water Expense</td><td>$9,634.88</td></tr><tr><td>505 \u2013 Gas &amp; Oil Expense</td><td>$3,000.00</td></tr><tr><td>506 \u2013 Communication Expense</td><td>$2,156.75</td></tr><tr><td>507 \u2013 Taxes &amp; License Expense</td><td>$1,250.50</td></tr><tr><td>508 \u2013 Advertising Expense</td><td>$4,500.00</td></tr><tr><td><strong>Total Operating Expenses</strong></td><td><strong>$77,037.93</strong></td></tr><tr><td><strong>NET INCOME</strong></td><td><strong>$45,832.32</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">Statement of Owner's Equity</h5>\n<table class=\"dtable \"><thead><tr><th>Item</th><th>Amount</th></tr></thead><tbody><tr><td>Wesley's Capital, beginning of period</td><td>$0.00</td></tr><tr><td>Add: owner investments during period</td><td>$152,368.50</td></tr><tr><td>Add: net income for the period</td><td>$45,832.32</td></tr><tr><td>Less: owner drawings during period</td><td>($5,000.00)</td></tr><tr><td><strong>Wesley's Capital, end of period</strong></td><td><strong>$193,200.82</strong></td></tr></tbody></table>\n<h5 class=\"modal-sub\">Balance Sheet</h5>\n<table class=\"dtable \"><thead><tr><th>Account</th><th>Amount</th></tr></thead><tbody><tr><td>101 \u2013 Cash</td><td>$179,670.12</td></tr><tr><td>102 \u2013 Accounts Receivable</td><td>$37,000.00</td></tr><tr><td>110 \u2013 Tools</td><td>$12,368.50</td></tr><tr><td>111 \u2013 Furniture &amp; Fixtures</td><td>$15,530.00</td></tr><tr><td>112 \u2013 Office Equipment</td><td>$24,000.00</td></tr><tr><td>113 \u2013 Repair Equipment</td><td>$57,000.00</td></tr><tr><td><strong>Total Assets</strong></td><td><strong>$325,568.62</strong></td></tr><tr><td>201 \u2013 Accounts Payable</td><td>$49,367.80</td></tr><tr><td>202 \u2013 Note Payable</td><td>$3,000.00</td></tr><tr><td>210 \u2013 Loan Payable</td><td>$80,000.00</td></tr><tr><td><strong>Total Liabilities</strong></td><td><strong>$132,367.80</strong></td></tr><tr><td>Owner's Equity</td><td>$193,200.82</td></tr><tr><td><strong>Total Liabilities &amp; Equity</strong></td><td><strong>$325,568.62</strong></td></tr></tbody></table>\n<p class=\"modal-note\">Balance Sheet check: BALANCED (Assets = Liabilities + Equity)</p>\n", "cash-flow-statement": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 Cash Flow Statement \u00b7 Dec 2019</p>\n<table class=\"dtable \"><thead><tr><th>Activity</th><th>Amount</th></tr></thead><tbody><tr><td>Net Cash from Operating Activities</td><td>$5,670.12</td></tr><tr><td>Net Cash from Investing Activities</td><td>($51,000.00)</td></tr><tr><td>Net Cash from Financing Activities</td><td>$225,000.00</td></tr><tr><td><strong>Net Increase in Cash</strong></td><td><strong>$179,670.12</strong></td></tr><tr><td>Cash balance, beginning of period</td><td>$0.00</td></tr><tr><td><strong>Cash balance, end of period</strong></td><td><strong>$179,670.12</strong></td></tr></tbody></table>\n<p class=\"modal-note\">Check vs. Balance Sheet cash: MATCHES.</p>\n", "dashboard": "\n<p class=\"modal-meta\">Wesley Auto Repair Services \u00b7 Financial Dashboard \u00b7 Period: 1\u201331 Dec 2019</p>\n<table class=\"dtable \"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Total Revenue</td><td>$122,870.25</td></tr><tr><td>Total Operating Expenses</td><td>$77,037.93</td></tr><tr><td>Net Income</td><td>$45,832.32</td></tr><tr><td>Total Assets</td><td>$325,568.62</td></tr><tr><td>Total Liabilities</td><td>$132,367.80</td></tr><tr><td>Total Owner's Equity</td><td>$193,200.82</td></tr><tr><td>Cash Balance</td><td>$179,670.12</td></tr><tr><td><strong>Trial Balance Status</strong></td><td><strong>BALANCED</strong></td></tr><tr><td><strong>Balance Sheet Status</strong></td><td><strong>BALANCED</strong></td></tr></tbody></table>\n"};
+  function openModal(key, title){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = REPORT_DATA[key] || '<p>Report not found.</p>';
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(){
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeModal(); });
+</script>
+
+</body>
+</html>
